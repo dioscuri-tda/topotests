@@ -60,8 +60,6 @@ class ecc_representation:
             * 'approximate': there is a list of jumping points (selected during the pilot run) and ECCs are
             interpolated over that grid.
         In practise only 'approximate mode should be used'
-    approximate_points: int
-        How many grid points is used to approximate the ECCs
     approximate_n_pilot: int
         Number of trials ECCs that are used to determine the optimal locations of grid points.
     fitted: bool
@@ -77,14 +75,13 @@ class ecc_representation:
 
     """
 
-    def __init__(self, norm="sup", n_interpolation_points=1000, mode="approximate"):
+    def __init__(self, norm="sup", n_interpolation_points=20000, mode="approximate"):
         self.xs = None
         self.representation = None
         self.max_range = -np.Inf
         self.n_interpolation_points = n_interpolation_points
         self.norm = norm
         self.mode = mode
-        self.approximate_points = 20000
         self.approximate_n_pilot = 100
         self.fitted = False
 
@@ -121,7 +118,7 @@ class ecc_representation:
                 self.max_range = max([self.max_range, ecc[-1, 0]])
                 jumps.update(ecc[:, 0])
             jumps = np.sort(list(jumps))
-            jumps_step = int(len(jumps) / self.approximate_points)
+            jumps_step = int(len(jumps) / self.n_interpolation_points)
             jumps_step = max(jumps_step, 1)
             self.xs = jumps[::jumps_step]
             self.representation = self.xs * 0

@@ -1,12 +1,18 @@
 from ecc import *
 import pandas as pd
-
+import numpy as np
+import scipy.interpolate as spi
+import matplotlib.pyplot as plt
 
 def sample_standarize(sample):
     return (sample - np.mean(sample, axis=0)) / np.std(sample, axis=0)
 
 
 class TopoTestOnesample:
+    """
+        Class to represent one-sample TopoTest
+
+    """
     def __init__(
         self,
         n: int,
@@ -18,8 +24,6 @@ class TopoTestOnesample:
         standarize: bool = False,
     ):
         """
-        Class to represent one-sample TopoTest
-
         :param n: sample size
         :param dim: dimension  of the sample data = dimension of the null distribution
         :param significance_level: significance level
@@ -114,20 +118,43 @@ class TopoTestOnesample:
         return accpect_h0, pvals
 
 
-# TODO: refactor this
-def TopoTestTwosample(X1, X2, norm="sup", loops=100):
-    n_grids = 2000
-    n1 = X1.shape[0]
-    n2 = X2.shape[0]
+def TopoTestTwosample(X1, X2, norm="sup", loops=100, n_interpolation_points=2000):
+    """
+    Function to run twos-sample TopoTest
 
-    def _get_ecc(X, epsmax=None):
-        ecc = np.array(compute_ECC_contributions_alpha(X))
+    :param X1: first sample
+    :param X2: second sample
+    :param norm: norm (=distance) used to measure the distance between ECC curves
+    :param loops: how many iterations of the permutation test to perform
+    :param n_interpolation_points: number of points in which ECCs are interpolated
+    :return: value of D statistcs and pvalue
+    """
+
+    def _get_ecc(point_cloud, filtration_max=None):
+        """
+        Computes the normalized ECC for the point clound.
+
+        :param point_cloud: point cloud for which the ECC must be constructed
+        :param filtration_max: maximal value of filtration. This is added to the ECC to provide equal support for
+                all considered ECCs
+        :return: normalized ECC
+        """
+        n = point_cloud.shape[0]
+        ecc = np.array(compute_ECC_contributions_alpha(point_cloud))
         ecc[:, 1] = np.cumsum(ecc[:, 1])
-        if epsmax is not None:
-            ecc = np.vstack([ecc, [epsmax, 1]])
+        if filtration_max is not None:
+            ecc = np.vstack([ecc, [filtration_max, 1]])
+        ecc[:, 1] = ecc[:, 1]/n
         return ecc
 
     def _dist_ecc(ecc1, ecc2):
+        """
+        Compute the distance between two ECCs assuming the jumping points are in the same locations
+
+        :param ecc1: first ecc
+        :param ecc2: second ecc
+        :return: distance, controlled by norm parameter of the TopoTestTwosample function
+        """
         # ecc1 and ecc2 are of equal length and have jumps in the same location
         if norm == "sup":
             return np.max(np.abs(ecc1[:, 1] - ecc2[:, 1]))
@@ -136,27 +163,48 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=100):
         if norm == "l2":
             return np.trapz((ecc1[:, 1] - ecc2[:, 1]) ** 2, x=ecc1[:, 0])
 
-    def _interpolate(ecc, epsgrid):
+    def _interpolate(ecc, filtration_grid):
+        """
+        Interpolate the ECC on the filtration_grid.
+
+        :param ecc: ECC to be interpolated
+        :param filtration_grid: grid of points on which the ECC should be interpolated
+        :return: interpolation of ECC over the filtration_grid
+
+        """
         interpolator = spi.interp1d(ecc[:, 0], ecc[:, 1], kind="previous")
-        y = interpolator(epsgrid)
-        return np.column_stack([epsgrid, y])
+        y = interpolator(filtration_grid)
+        return np.column_stack([filtration_grid, y])
 
-    ecc1 = _get_ecc(X1)
-    ecc2 = _get_ecc(X2)
-    epsmax = max(np.max(ecc1[:, 0]), np.max(ecc2[:, 0]))
-    epsgrid = np.linspace(0, epsmax, n_grids)
-    ecc1 = _interpolate(_get_ecc(X1, epsmax), epsgrid)
-    ecc2 = _interpolate(_get_ecc(X2, epsmax), epsgrid)
-    D = _dist_ecc(ecc1, ecc2)
+    if len(X1.shape) == 1:
+        X1 = X1.reshape(-1, 1)
+    if len(X2.shape) == 1:
+        X2 = X2.reshape(-1, 1)
 
+    # run the two-sample test
+
+    # construct trial ECC only to get the filtration_max and filtration_grid
+    eccX1 = _get_ecc(point_cloud=X1)
+    eccX2 = _get_ecc(point_cloud=X2)
+    filtration_max = max(np.max(eccX1[:, 0]), np.max(eccX2[:, 0]))
+    filtration_gird = np.linspace(0, filtration_max, n_interpolation_points)
+
+    # construct the actual ECCs from sample data points. they are defined over the same filtration grid
+    eccX1 = _interpolate(_get_ecc(point_cloud=X1, filtration_max=filtration_max), filtration_grid=filtration_gird)
+    eccX2 = _interpolate(_get_ecc(point_cloud=X2, filtration_max=filtration_max), filtration_grid=filtration_gird)
+    sample_dist = _dist_ecc(ecc1=eccX1, ecc2=eccX2)
+
+    # glue sample together to and resample from it
+    n1 = X1.shape[0]
+    n2 = X2.shape[0]
     X12 = np.vstack([X1, X2])
     distances = []
     for _ in range(loops):
         inds = np.random.permutation(n1 + n2)
         x1 = X12[inds[:n1]]
         x2 = X12[inds[n1:]]
-        y1 = _interpolate(_get_ecc(x1, epsmax), epsgrid=epsgrid)
-        y2 = _interpolate(_get_ecc(x2, epsmax), epsgrid=epsgrid)
-        distances.append(_dist_ecc(y1, y2))
-    pval = np.mean(distances > D)
-    return D, pval, distances
+        y1 = _interpolate(_get_ecc(point_cloud=x1, filtration_max=filtration_max), filtration_grid=filtration_gird)
+        y2 = _interpolate(_get_ecc(point_cloud=x2, filtration_max=filtration_max), filtration_grid=filtration_gird)
+        distances.append(_dist_ecc(ecc1=y1, ecc2=y2))
+    pval = np.mean(distances > sample_dist)
+    return sample_dist, pval
