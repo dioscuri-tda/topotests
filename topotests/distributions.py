@@ -37,7 +37,7 @@ class GaussianMixture:
         """
         inds = st.rv_discrete(values=(range(self.n_gauss), self.probas)).rvs(size=size)
         samples = [self.gauss_rv[ind].rvs(size=1)[0] for ind in inds]
-        return samples
+        return np.array(samples)
 
     def cdf(self, pts):
         """

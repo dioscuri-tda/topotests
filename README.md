@@ -7,7 +7,7 @@ This repo contains a codebase for the paper
 
 by Paweł Dłotko, Niklas Hellmer, Łukasz Stettner and Rafał Topolnicki. 
 
-Preprint can be find in arXiv [LINK]
+Preprint can be find in arXiv [LINK](https://arxiv.org/)
 
 ## About TopoTests
 TopoTests provides a framework for goodness-of-fit (GoF) testing in arbitrary dimensions for one-sample and two-sample problems by adapting Euler Characteristic Curve (ECC) - a tool from computational topology. To the best of our knowledge it is one of the first
