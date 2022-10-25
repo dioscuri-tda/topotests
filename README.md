@@ -30,7 +30,7 @@ pip install -r requirements.txt
 ```
 
 ### Example
-Example use and comparison with the Kolmogorov-Smirnov can be found in [OneSampleExample](OneSampleExample.ipynb) notebook.
+Example use and comparison with the Kolmogorov-Smirnov can be found in [OneSampleExample](OneSampleExample.ipynb) and [TwoSampleExample](TwoSampleExample.ipynb) notebooks.
 
 ## Results
 Simulation study was conducted to address the power of the TopoTest in comparison with
