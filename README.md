@@ -7,7 +7,7 @@ This repo contains a codebase for the paper
 
 by Paweł Dłotko, Niklas Hellmer, Łukasz Stettner and Rafał Topolnicki. 
 
-Preprint can be find in arXiv [LINK](https://arxiv.org/)
+Preprint can be find in [arXiv:2010.14965](https://arxiv.org/pdf/2210.14965.pdf)
 
 ## About TopoTests
 TopoTests provides a framework for goodness-of-fit (GoF) testing in arbitrary dimensions for one-sample and two-sample problems by adapting Euler Characteristic Curve (ECC) - a tool from computational topology. To the best of our knowledge it is one of the first
@@ -47,7 +47,7 @@ The average power (excluding diagonal elements) is
 - TopoTest: is 0.832 for d=1 and 0.824 for d=3
 - Kolmogorov-Smirnov: 0794 for d=1 and 0.763 for d=3
 
-Please refer to Sections 4 and 5 of [the paper](https://arxiv.org/) for more results.
+Please refer to Sections 4 and 5 of [the paper](https://arxiv.org/pdf/2210.14965.pdf) for more results.
 
 ## Licence
 Code is released under the BSD licence.
