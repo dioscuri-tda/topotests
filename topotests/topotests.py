@@ -118,7 +118,7 @@ class TopoTestOnesample:
         return accpect_h0, pvals
 
 
-def TopoTestTwosample(X1, X2, norm="sup", loops=100, n_interpolation_points=2000):
+def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000):
     """
     Function to run twos-sample TopoTest
 
@@ -139,12 +139,10 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=100, n_interpolation_points=2000
                 all considered ECCs
         :return: normalized ECC
         """
-        n = point_cloud.shape[0]
         ecc = np.array(compute_ECC_contributions_alpha(point_cloud))
         ecc[:, 1] = np.cumsum(ecc[:, 1])
         if filtration_max is not None:
-            ecc = np.vstack([ecc, [filtration_max, 1]])
-        ecc[:, 1] = ecc[:, 1]/n
+            ecc = np.vstack([ecc, [filtration_max, 0]])
         return ecc
 
     def _dist_ecc(ecc1, ecc2):
@@ -182,7 +180,6 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=100, n_interpolation_points=2000
         X2 = X2.reshape(-1, 1)
 
     # run the two-sample test
-
     # construct trial ECC only to get the filtration_max and filtration_grid
     eccX1 = _get_ecc(point_cloud=X1)
     eccX2 = _get_ecc(point_cloud=X2)
@@ -207,4 +204,4 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=100, n_interpolation_points=2000
         y2 = _interpolate(_get_ecc(point_cloud=x2, filtration_max=filtration_max), filtration_grid=filtration_gird)
         distances.append(_dist_ecc(ecc1=y1, ecc2=y2))
     pval = np.mean(distances > sample_dist)
-    return sample_dist, pval
+    return pval, sample_dist

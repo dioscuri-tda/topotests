@@ -14,6 +14,9 @@ def compute_ECC_contributions_alpha(point_cloud: np.ndarray):
     """
     if len(point_cloud.shape) == 1:
         point_cloud = point_cloud.reshape(-1, 1)
+
+    points_n, points_dim = point_cloud.shape
+    factor = points_n ** (2.0 / points_dim)
     alpha_complex = gd.AlphaComplex(points=point_cloud)
     simplex_tree = alpha_complex.create_simplex_tree()
 
@@ -31,7 +34,9 @@ def compute_ECC_contributions_alpha(point_cloud: np.ndarray):
     for key in to_del:
         del ecc[key]
 
-    return sorted(list(ecc.items()), key=lambda x: x[0])
+    ecc = sorted(list(ecc.items()), key=lambda x: x[0])
+    ecc = [(e[0] * factor, e[1] / points_n) for e in ecc]
+    return ecc
 
 
 class ecc_representation:
@@ -82,7 +87,7 @@ class ecc_representation:
         self.n_interpolation_points = n_interpolation_points
         self.norm = norm
         self.mode = mode
-        self.approximate_n_pilot = 100
+        self.approximate_n_pilot = 1000
         self.fitted = False
 
     def fit(self, samples):
@@ -103,7 +108,7 @@ class ecc_representation:
             self.representation = self.xs * 0
             # extend all ecc so that it include the max_range
             for ecc in eccs:
-                ecc_extended = np.vstack([ecc, [self.max_range, 1]])
+                ecc_extended = np.vstack([ecc, [self.max_range, 0]])
                 interpolator = spi.interp1d(ecc_extended[:, 0], ecc_extended[:, 1], kind="previous")
                 y_inter = interpolator(self.xs)
                 self.representation += y_inter
@@ -130,7 +135,7 @@ class ecc_representation:
                 range_ind = ecc[:, 0] < self.max_range
                 ecc = ecc[range_ind, :]
                 # add ecc max to the end
-                ecc_extended = np.vstack([ecc, [self.max_range, 1]])
+                ecc_extended = np.vstack([ecc, [self.max_range, 0]])
                 interpolator = spi.interp1d(ecc_extended[:, 0], ecc_extended[:, 1], kind="previous")
                 y_inter = interpolator(self.xs)
                 self.representation += y_inter
@@ -148,7 +153,7 @@ class ecc_representation:
             ecc[:, 1] = np.cumsum(ecc[:, 1])
             range_ind = ecc[:, 0] < self.max_range
             ecc = ecc[range_ind, :]
-            ecc = np.vstack([ecc, [self.max_range, 1]])
+            ecc = np.vstack([ecc, [self.max_range, 0]])
             interpolator = spi.interp1d(ecc[:, 0], ecc[:, 1], kind="previous")
             representation = interpolator(self.xs)
             representations.append(representation)
