@@ -4,9 +4,9 @@ import scipy.interpolate as spi
 import random
 
 
-def compute_ECC_contributions_alpha(point_cloud: np.ndarray):
+def compute_ecc_contributions_alpha(point_cloud: np.ndarray):
     """
-    Computes controbutions to ECC build on top of Alpha Complex
+    Computes contributions to ECC build on top of Alpha Complex
 
     :param point_cloud: data points (array)
     :return: list of tuples. First element of each tuple is a radius at which
@@ -36,6 +36,19 @@ def compute_ECC_contributions_alpha(point_cloud: np.ndarray):
 
     ecc = sorted(list(ecc.items()), key=lambda x: x[0])
     ecc = [(e[0] * factor, e[1] / points_n) for e in ecc]
+    return ecc
+
+
+def compute_ecc(point_cloud: np.ndarray):
+    """
+    Computes ECC build on top of Alpha Complex
+
+    :param point_cloud: data points (array)
+    :return: (array) ECC
+    """
+    ecc = compute_ecc_contributions_alpha(point_cloud=point_cloud)
+    ecc = np.array(ecc)
+    ecc[:, 1] = np.cumsum(ecc[:, 1])
     return ecc
 
 
@@ -90,17 +103,13 @@ class ecc_representation:
         self.approximate_n_pilot = 1000
         self.fitted = False
 
-    def fit(self, samples):
-        # TODO: this implementation is memomy-ineffcient - we don't have to store all ecc to compute the mean
-        # TODO: this becomes a problem for Rips
-        # TODO: To be fixed in later releases
+    def fit(self, samples, transform=False):
         self.max_range = -np.Inf
         eccs = []
         jumps = set()
         if self.mode == "exact":
             for sample in samples:
-                ecc = np.array(compute_ECC_contributions_alpha(sample))
-                ecc[:, 1] = np.cumsum(ecc[:, 1])
+                ecc = compute_ecc(sample)
                 jumps.update(ecc[:, 0])  # FIXME: ecc[:, 0] is stored in eccs anyway
                 self.max_range = max(self.max_range, ecc[-1, 0])
                 eccs.append(ecc)
@@ -108,8 +117,9 @@ class ecc_representation:
             self.representation = self.xs * 0
             # extend all ecc so that it include the max_range
             for ecc in eccs:
-                ecc_extended = np.vstack([ecc, [self.max_range, 0]])
-                interpolator = spi.interp1d(ecc_extended[:, 0], ecc_extended[:, 1], kind="previous")
+                #                ecc_extended = np.vstack([ecc, [self.max_range, 0]])
+                #               interpolator = spi.interp1d(ecc_extended[:, 0], ecc_extended[:, 1], kind="previous", fill_value='extrapolate')
+                interpolator = spi.interp1d(ecc[:, 0], ecc[:, 1], kind="previous", fill_value="extrapolate")
                 y_inter = interpolator(self.xs)
                 self.representation += y_inter
             self.representation /= len(samples)
@@ -119,7 +129,7 @@ class ecc_representation:
             trial_samples = random.choices(samples, k=approximate_n_trials)
             jumps = set()
             for sample in trial_samples:
-                ecc = np.array(compute_ECC_contributions_alpha(sample))
+                ecc = compute_ecc(sample)
                 self.max_range = max([self.max_range, ecc[-1, 0]])
                 jumps.update(ecc[:, 0])
             jumps = np.sort(list(jumps))
@@ -128,19 +138,33 @@ class ecc_representation:
             self.xs = jumps[::jumps_step]
             self.representation = self.xs * 0
             # interpolate ECC curves on the grid
+            representations = []
             for sample in samples:
-                ecc = np.array(compute_ECC_contributions_alpha(sample))
-                ecc[:, 1] = np.cumsum(ecc[:, 1])
+                ecc = compute_ecc(sample)
                 # cut ecc on self.max_range
                 range_ind = ecc[:, 0] < self.max_range
                 ecc = ecc[range_ind, :]
                 # add ecc max to the end
-                ecc_extended = np.vstack([ecc, [self.max_range, 0]])
-                interpolator = spi.interp1d(ecc_extended[:, 0], ecc_extended[:, 1], kind="previous")
+                # ecc_extended = np.vstack([ecc, [self.max_range, 0]])
+                # interpolator = spi.interp1d(ecc_extended[:, 0], ecc_extended[:, 1], kind="previous")
+                interpolator = spi.interp1d(ecc[:, 0], ecc[:, 1], kind="previous", fill_value="extrapolate")
                 y_inter = interpolator(self.xs)
+                if transform:
+                    representations.append(y_inter)
                 self.representation += y_inter
             self.representation /= len(samples)
         self.fitted = True
+        if transform:
+            dist = [self.compute_distance_from_representation(rep) for rep in representations]
+            return dist, representations
+
+    def compute_distance_from_representation(self, ecc):
+        if self.norm == "l1":
+            return np.trapz(np.abs(ecc - self.representation), x=self.xs)
+        if self.norm == "l2":
+            return np.trapz((ecc - self.representation) ** 2, x=self.xs)
+        # sup norm
+        return np.max(np.abs(ecc - self.representation))
 
     def transform(self, samples):
         if not self.fitted:
@@ -149,19 +173,23 @@ class ecc_representation:
         dist = []
         representations = []
         for sample in samples:
-            ecc = np.array(compute_ECC_contributions_alpha(sample))
-            ecc[:, 1] = np.cumsum(ecc[:, 1])
+            ecc = compute_ecc(sample)
             range_ind = ecc[:, 0] < self.max_range
             ecc = ecc[range_ind, :]
-            ecc = np.vstack([ecc, [self.max_range, 0]])
-            interpolator = spi.interp1d(ecc[:, 0], ecc[:, 1], kind="previous")
+            # ecc = np.vstack([ecc, [self.max_range, 0]])
+            # interpolator = spi.interp1d(ecc[:, 0], ecc[:, 1], kind="previous")
+            interpolator = spi.interp1d(ecc[:, 0], ecc[:, 1], kind="previous", fill_value="extrapolate")
             representation = interpolator(self.xs)
             representations.append(representation)
-            if self.norm == "l1":
-                dist.append(np.trapz(np.abs(representation - self.representation), x=self.xs))
-            elif self.norm == "l2":
-                dist.append(np.trapz((representation - self.representation) ** 2, x=self.xs))
-            else:  # sup
-                dist.append(np.max(np.abs(representation - self.representation)))
+            dist.append(self.compute_distance_from_representation(representation))
+            # if self.norm == "l1":
+            #     dist.append(np.trapz(np.abs(representation - self.representation), x=self.xs))
+            # elif self.norm == "l2":
+            #     dist.append(np.trapz((representation - self.representation) ** 2, x=self.xs))
+            # else:  # sup
+            #     dist.append(np.max(np.abs(representation - self.representation)))
 
         return dist, representations
+
+    def fit_transform(self, samples):
+        return self.fit(samples, transform=True)

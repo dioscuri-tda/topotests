@@ -2,10 +2,14 @@ from ecc import *
 import pandas as pd
 import numpy as np
 import scipy.interpolate as spi
-import matplotlib.pyplot as plt
+from scipy._lib._bunch import _make_tuple_bunch
+
 
 def sample_standarize(sample):
     return (sample - np.mean(sample, axis=0)) / np.std(sample, axis=0)
+
+
+TopoTestResult = _make_tuple_bunch("TopoTestResult", ["statistic", "pvalue"])
 
 
 class TopoTestOnesample:
@@ -13,6 +17,7 @@ class TopoTestOnesample:
         Class to represent one-sample TopoTest
 
     """
+
     def __init__(
         self,
         n: int,
@@ -58,7 +63,7 @@ class TopoTestOnesample:
         self.representation_threshold = None
         self.representation_signature = None
 
-    def fit(self, rv, n_signature: int = 1000, n_test: int = 1000):
+    def fit(self, rv, n_signature: int = 1000, n_test: int = None):
         """
         Fitting/Training phase of the TopoTest.
         Purpose of this method is to compute the average ECC and threshold value, that is used later to decide
@@ -70,18 +75,28 @@ class TopoTestOnesample:
         :param rv: random number generator that provides a rvs(size=) method. Most likely you would like to go with
                sth like scipy.stats.rv_continuous object e.g. scipy.stats.norm
         :param n_signature: number of random samples drawn to compute average ECC
-        :param n_test: number of sample drawn to compute the threshold value
+        :param n_test: number of sample drawn to compute the threshold value. If None is passed samples drawn to compute average ECC are used.
         """
         # generate signature samples and test sample
+        if n_test is not None and n_test < 2:
+            n_test = None
+
         samples = [rv.rvs(size=self.sample_pts_n) * self.scaling for i in range(n_signature)]
-        samples_test = [rv.rvs(size=self.sample_pts_n) * self.scaling for i in range(n_test)]
+        if n_test:
+            samples_test = [rv.rvs(size=self.sample_pts_n) * self.scaling for i in range(n_test)]
+        else:
+            samples_test = None
         if self.standarize:
             samples = [sample_standarize(sample) for sample in samples]
-            samples_test = [sample_standarize(sample) for sample in samples_test]
+            if n_test:
+                samples_test = [sample_standarize(sample) for sample in samples_test]
 
         # get signatures representations of both samples
-        self.representation.fit(samples)
-        (self.representation_distance, self.representation_signature) = self.representation.transform(samples_test)
+        if n_test:
+            self.representation.fit(samples)
+            self.representation_distance, self.representation_signature = self.representation.transform(samples_test)
+        else:
+            self.representation_distance, self.representation_signature = self.representation.fit_transform(samples)
         self.representation_threshold = np.quantile(self.representation_distance, 1 - self.significance_level)
         self.fitted = True
 
@@ -111,11 +126,13 @@ class TopoTestOnesample:
 
         distance_predict, _ = self.representation.transform(samples)
 
-        accpect_h0 = [dp < self.representation_threshold for dp in distance_predict]
+        # reject_h0 = [dp > self.representation_threshold for dp in distance_predict]
         # calculate pvalues
         pvals = [np.mean(self.representation_distance > dp) for dp in distance_predict]
-
-        return accpect_h0, pvals
+        if len(samples) > 1:
+            return TopoTestResult(distance_predict, pvals)
+        else:
+            return TopoTestResult(distance_predict[0], pvals[0])
 
 
 def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000):
@@ -139,7 +156,7 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000
                 all considered ECCs
         :return: normalized ECC
         """
-        ecc = np.array(compute_ECC_contributions_alpha(point_cloud))
+        ecc = np.array(compute_ecc_contributions_alpha(point_cloud))
         ecc[:, 1] = np.cumsum(ecc[:, 1])
         if filtration_max is not None:
             ecc = np.vstack([ecc, [filtration_max, 0]])
@@ -204,4 +221,5 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000
         y2 = _interpolate(_get_ecc(point_cloud=x2, filtration_max=filtration_max), filtration_grid=filtration_gird)
         distances.append(_dist_ecc(ecc1=y1, ecc2=y2))
     pval = np.mean(distances > sample_dist)
-    return pval, sample_dist
+
+    return TopoTestResult(sample_dist, pval)
