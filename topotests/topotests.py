@@ -2,7 +2,6 @@ from ecc import *
 import pandas as pd
 import numpy as np
 import scipy.interpolate as spi
-from tqdm import tqdm
 from scipy._lib._bunch import _make_tuple_bunch
 
 
@@ -215,7 +214,8 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000
     n2 = X2.shape[0]
     X12 = np.vstack([X1, X2])
     distances = []
-    for _ in tqdm(range(loops), disbale=not verbose):
+    for loop in range(loops):
+        print(f'Loop {loop+1}/{loops}')
         inds = np.random.permutation(n1 + n2)
         x1 = X12[inds[:n1]]
         x2 = X12[inds[n1:]]
