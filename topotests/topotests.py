@@ -2,6 +2,7 @@ from ecc import *
 import pandas as pd
 import numpy as np
 import scipy.interpolate as spi
+from tqdm import tqdm
 from scipy._lib._bunch import _make_tuple_bunch
 
 
@@ -135,7 +136,7 @@ class TopoTestOnesample:
             return TopoTestResult(distance_predict[0], pvals[0])
 
 
-def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000):
+def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000, verbose=False):
     """
     Function to run twos-sample TopoTest
 
@@ -144,6 +145,7 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000
     :param norm: norm (=distance) used to measure the distance between ECC curves
     :param loops: how many iterations of the permutation test to perform
     :param n_interpolation_points: number of points in which ECCs are interpolated
+    :param verbose: should the output be produced?
     :return: value of D statistcs and pvalue
     """
 
@@ -213,7 +215,7 @@ def TopoTestTwosample(X1, X2, norm="sup", loops=500, n_interpolation_points=2000
     n2 = X2.shape[0]
     X12 = np.vstack([X1, X2])
     distances = []
-    for _ in range(loops):
+    for _ in tqdm(range(loops), disbale=not verbose):
         inds = np.random.permutation(n1 + n2)
         x1 = X12[inds[:n1]]
         x2 = X12[inds[n1:]]
