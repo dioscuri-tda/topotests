@@ -19,18 +19,13 @@ The method is designed to work well with multivariate distributions.
 ## How to use?
 
 ### Instalation
-Instruction below for work for Linux and MacOSX.
+You can simply install TopoTest from pip
 
-1. Clone the repo
-2. (Optional) Create a [python virtual enviroment](https://docs.python.org/3/library/venv.html), activate it and install dependencies
-```
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+`pip install topotest`
+
 
 ### Example
-Example use and comparison with the Kolmogorov-Smirnov can be found in [OneSampleExample](OneSampleExample.ipynb) and [TwoSampleExample](TwoSampleExample.ipynb) notebooks.
+Example use and comparison with the Kolmogorov-Smirnov can be found in [OneSampleExample](notebooks/OneSampleExample.ipynb) and [TwoSampleExample](notebooks/TwoSampleExample.ipynb) notebooks.
 
 ## Results
 Simulation study was conducted to address the power of the TopoTest in comparison with
@@ -48,8 +43,5 @@ The average power (excluding diagonal elements) is
 - Kolmogorov-Smirnov: 0794 for d=1 and 0.763 for d=3
 
 Please refer to Sections 4 and 5 of [the paper](https://arxiv.org/pdf/2210.14965.pdf) for more results.
-
-## Licence
-Code is released under the BSD licence.
 
 
