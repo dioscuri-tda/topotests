@@ -3,10 +3,13 @@
 ## Paper
 This repo contains a codebase for the paper 
 
-### "Topology-Driven Goodness-of-Fit Tests in Arbitrary Dimensions" 
+**"Topology-Driven Goodness-of-Fit Tests in Arbitrary Dimensions"** 
 
 by Paweł Dłotko, Niklas Hellmer, Łukasz Stettner and Rafał Topolnicki. 
+Statistics and Computing **34**, 34 (2024) [https://doi.org/10.1007/](https://doi.org/10.1007/)
 
+
+Article is and available in OpenAcess [HERE](https://link.springer.com/article/10.1007/s11222-023-10333-0)
 Preprint can be find in [arXiv:2010.14965](https://arxiv.org/pdf/2210.14965.pdf)
 
 ## About TopoTests

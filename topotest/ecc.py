@@ -96,7 +96,7 @@ class ecc_representation:
     def __init__(self, norm="sup", n_interpolation_points=20000, mode="approximate"):
         self.xs = None
         self.representation = None
-        self.max_range = -np.Inf
+        self.max_range = -np.inf
         self.n_interpolation_points = n_interpolation_points
         self.norm = norm
         self.mode = mode
@@ -104,7 +104,7 @@ class ecc_representation:
         self.fitted = False
 
     def fit(self, samples, transform=False):
-        self.max_range = -np.Inf
+        self.max_range = -np.inf
         eccs = []
         jumps = set()
         if self.mode == "exact":
